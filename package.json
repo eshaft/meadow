@@ -9,7 +9,27 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "body-parser": "^1.17.2",
+    "bson": "^1.0.4",
+    "cookie-parser": "^1.4.3",
     "express": "^4.15.3",
-    "express-handlebars": "^3.0.0"
+    "express-handlebars": "^3.0.0",
+    "express-logger": "0.0.3",
+    "express-session": "^1.15.4",
+    "formidable": "^1.1.1",
+    "fs": "0.0.1-security",
+    "jquery-file-upload-middleware": "^0.1.8",
+    "mongoose": "^3.9.7",
+    "morgan": "^1.8.2",
+    "nodemailer": "^4.0.1"
+  },
+  "devDependencies": {
+    "chai": "^4.0.2",
+    "grunt": "^1.0.1",
+    "grunt-cafe-mocha": "^0.1.13",
+    "grunt-contrib-jshint": "^1.1.0",
+    "grunt-exec": "^2.0.0",
+    "mocha": "^3.4.2",
+    "zombie": "^5.0.7"
   }
 }
