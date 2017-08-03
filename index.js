@@ -28,29 +28,8 @@ var VALID_EMAIL_REGEX = new RegExp('^[a-zA-Z0-9.!#$%&\'*+\/=?^_`{|}~-]+@' +
   '(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$');
 var emailService = require('./lib/email.js')(credentials);
 var fs = require('fs');
-var Vacation = require('./models/vacation.js');
-
-// database configuration
-var mongoose = require('mongoose');
-mongoose.set('debug, true');
-var options = {
-  server: {
-    socketOptions: {
-      keepAlive: 1
-    }
-  }
-};
-
-switch (app.get('env')) {
-  case 'development':
-    mongoose.connect(credentials.mongo.development.connectionString, options);
-    break;
-  case 'production':
-    mongoose.connect(credentials.mongo.production.connectionString, options);
-    break;
-  default:
-    throw new Error('Unknown execution environment: ' + app.get('env'));
-}
+var mongoose = require('./lib/mg.js')(app, credentials);
+var Vacation = require('./models/vacation.js')(mongoose);
 
 // initialize vacations
 Vacation.find(function(err, vacations) {
@@ -101,10 +80,6 @@ Vacation.find(function(err, vacations) {
     notes: 'The tour guide is currently recovering from a skiing accident.',
   }).save();
 });
-
-var conn = mongoose.connection;
-
-conn.on('connection', console.error.bind(console, 'connecting: '));
 
 // Middleware
 app.use(express.static(__dirname + '/public'));
@@ -234,7 +209,7 @@ app.get('/vacations', function(req, res) {
           description: vacation.description,
           price: vacation.getDisplayPrice(),
           inSeason: vacation.inSeason,
-        }
+        };
       })
     };
     res.render('vacations', context);
