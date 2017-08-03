@@ -12,4 +12,4 @@ module.exports = {
       connectionString: 'mongodb://admin:1234@ds129593.mlab.com:29593/meadow',
     },
   },
-};
+}; 
