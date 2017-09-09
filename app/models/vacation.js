@@ -1,6 +1,6 @@
-//var mongoose = require('mongoose');
-module.exports = function(mongoose) {
-  var vacationSchema = mongoose.Schema({
+var mongoose = require('mongoose');
+
+var vacationSchema = mongoose.Schema({
     name: String,
     slug: String,
     category: String,
@@ -14,10 +14,9 @@ module.exports = function(mongoose) {
     maximumGuests: Number,
     notes: String,
     packagesSold: Number,
-  });
-  vacationSchema.methods.getDisplayPrice = function() {
+});
+vacationSchema.methods.getDisplayPrice = function(){
     return '$' + (this.priceInCents / 100).toFixed(2);
-  };
-  var Vacation = mongoose.model('Vacation', vacationSchema);
-  return Vacation;
 };
+var Vacation = mongoose.model('Vacation', vacationSchema);
+module.exports = Vacation;

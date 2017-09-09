@@ -28,57 +28,79 @@ var VALID_EMAIL_REGEX = new RegExp('^[a-zA-Z0-9.!#$%&\'*+\/=?^_`{|}~-]+@' +
   '(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$');
 var emailService = require('./lib/email.js')(credentials);
 var fs = require('fs');
-var mongoose = require('./lib/mg.js')(app, credentials);
-var Vacation = require('./models/vacation.js')(mongoose);
+var Vacation = require('./models/vacation.js');
+
+// database configuration
+var mongoose = require('mongoose');
+var options = {
+    server: {
+       socketOptions: { keepAlive: 1 } 
+    }
+};
+switch(app.get('env')){
+    case 'development':
+        mongoose.connect(credentials.mongo.development.connectionString, options);
+        break;
+    case 'production':
+        mongoose.connect(credentials.mongo.production.connectionString, options);
+        break;
+    default:
+        throw new Error('Unknown execution environment: ' + app.get('env'));
+}
+
+
 
 // initialize vacations
-Vacation.find(function(err, vacations) {
-  if (vacations.length) return;
+Vacation.find(function(err, vacations){
+    console.log(1);
+    console.log(err);
+    console.log(vacations.length);
+    if(vacations.length) return;
 
-  new Vacation({
-    name: 'Hood River Day Trip',
-    slug: 'hood-river-day-trip',
-    category: 'Day Trip',
-    sku: 'HR199',
-    description: 'Spend a day sailing on the Columbia and ' +
-      'enjoying craft beers in Hood River!',
-    priceInCents: 9995,
-    tags: ['day trip', 'hood river', 'sailing', 'windsurfing', 'breweries'],
-    inSeason: true,
-    maximumGuests: 16,
-    available: true,
-    packagesSold: 0,
-  }).save();
+    new Vacation({
+        name: 'Hood River Day Trip',
+        slug: 'hood-river-day-trip',
+        category: 'Day Trip',
+        sku: 'HR199',
+        description: 'Spend a day sailing on the Columbia and ' + 
+            'enjoying craft beers in Hood River!',
+        priceInCents: 9995,
+        tags: ['day trip', 'hood river', 'sailing', 'windsurfing', 'breweries'],
+        inSeason: true,
+        maximumGuests: 16,
+        available: true,
+        packagesSold: 0,
+    }).save();
 
-  new Vacation({
-    name: 'Oregon Coast Getaway',
-    slug: 'oregon-coast-getaway',
-    category: 'Weekend Getaway',
-    sku: 'OC39',
-    description: 'Enjoy the ocean air and quaint coastal towns!',
-    priceInCents: 269995,
-    tags: ['weekend getaway', 'oregon coast', 'beachcombing'],
-    inSeason: false,
-    maximumGuests: 8,
-    available: true,
-    packagesSold: 0,
-  }).save();
+    new Vacation({
+        name: 'Oregon Coast Getaway',
+        slug: 'oregon-coast-getaway',
+        category: 'Weekend Getaway',
+        sku: 'OC39',
+        description: 'Enjoy the ocean air and quaint coastal towns!',
+        priceInCents: 269995,
+        tags: ['weekend getaway', 'oregon coast', 'beachcombing'],
+        inSeason: false,
+        maximumGuests: 8,
+        available: true,
+        packagesSold: 0,
+    }).save();
 
-  new Vacation({
-    name: 'Rock Climbing in Bend',
-    slug: 'rock-climbing-in-bend',
-    category: 'Adventure',
-    sku: 'B99',
-    description: 'Experience the thrill of rock climbing in the high desert.',
-    priceInCents: 289995,
-    tags: ['weekend getaway', 'bend', 'high desert', 'rock climbing', 'hiking', 'skiing'],
-    inSeason: true,
-    requiresWaiver: true,
-    maximumGuests: 4,
-    available: false,
-    packagesSold: 0,
-    notes: 'The tour guide is currently recovering from a skiing accident.',
-  }).save();
+    new Vacation({
+        name: 'Rock Climbing in Bend',
+        slug: 'rock-climbing-in-bend',
+        category: 'Adventure',
+        sku: 'B99',
+        description: 'Experience the thrill of rock climbing in the high desert.',
+        priceInCents: 289995,
+        tags: ['weekend getaway', 'bend', 'high desert', 'rock climbing', 'hiking', 'skiing'],
+        inSeason: true,
+        requiresWaiver: true,
+        maximumGuests: 4,
+        available: false,
+        packagesSold: 0,
+        notes: 'The tour guide is currently recovering from a skiing accident.',
+    }).save();
 });
 
 // Middleware
@@ -359,7 +381,7 @@ app.use(function(err, req, res, next) {
 
 
 function startServer() {
-  app.listen(app.get('port'), function() {
+  app.listen(app.get('port'), '0.0.0.0', function() {
     console.log('Express запущен в режиме ' + app.get('env') +
       ' на http://localhost:' + app.get('port') +
       '; нажмите Ctrl+C для завершения.');
