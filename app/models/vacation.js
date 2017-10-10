@@ -13,7 +13,7 @@ var vacationSchema = mongoose.Schema({
     requiresWaiver: Boolean,
     maximumGuests: Number,
     notes: String,
-    packagesSold: Number,
+    packagesSold: Number
 });
 vacationSchema.methods.getDisplayPrice = function(){
     return '$' + (this.priceInCents / 100).toFixed(2);

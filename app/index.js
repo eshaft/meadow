@@ -32,14 +32,17 @@ var Vacation = require('./models/vacation.js');
 
 // database configuration
 var mongoose = require('mongoose');
+mongoose.Promise = Promise; 
 var options = {
-    server: {
-       socketOptions: { keepAlive: 1 } 
-    }
+    useMongoClient: true,
+    keepAlive: true
 };
 switch(app.get('env')){
     case 'development':
-        mongoose.connect(credentials.mongo.development.connectionString, options);
+        mongoose.connect('mongodb://meadowUser:1234@mongo/meadow', options).then(
+            () => { /** ready to use. The `mongoose.connect()` promise resolves to undefined. */ },
+            err => { console.log(err); }
+        );
         break;
     case 'production':
         mongoose.connect(credentials.mongo.production.connectionString, options);
@@ -50,168 +53,163 @@ switch(app.get('env')){
 
 
 
-// initialize vacations
-Vacation.find(function(err, vacations){
-    console.log(1);
-    console.log(err);
-    console.log(vacations.length);
-    if(vacations.length) return;
+  // initialize vacations
+  /*Vacation.find(function(err, vacations){
+      new Vacation({
+          name: 'Hood River Day Trip',
+          slug: 'hood-river-day-trip',
+          category: 'Day Trip',
+          sku: 'HR199',
+          description: 'Spend a day sailing on the Columbia and ' +
+              'enjoying craft beers in Hood River!',
+          priceInCents: 9995,
+          tags: ['day trip', 'hood river', 'sailing', 'windsurfing', 'breweries'],
+          inSeason: true,
+          maximumGuests: 16,
+          available: true,
+          packagesSold: 0
+      }).save();
 
-    new Vacation({
-        name: 'Hood River Day Trip',
-        slug: 'hood-river-day-trip',
-        category: 'Day Trip',
-        sku: 'HR199',
-        description: 'Spend a day sailing on the Columbia and ' + 
-            'enjoying craft beers in Hood River!',
-        priceInCents: 9995,
-        tags: ['day trip', 'hood river', 'sailing', 'windsurfing', 'breweries'],
-        inSeason: true,
-        maximumGuests: 16,
-        available: true,
-        packagesSold: 0,
-    }).save();
+      new Vacation({
+          name: 'Oregon Coast Getaway',
+          slug: 'oregon-coast-getaway',
+          category: 'Weekend Getaway',
+          sku: 'OC39',
+          description: 'Enjoy the ocean air and quaint coastal towns!',
+          priceInCents: 269995,
+          tags: ['weekend getaway', 'oregon coast', 'beachcombing'],
+          inSeason: false,
+          maximumGuests: 8,
+          available: true,
+          packagesSold: 0
+      }).save();
 
-    new Vacation({
-        name: 'Oregon Coast Getaway',
-        slug: 'oregon-coast-getaway',
-        category: 'Weekend Getaway',
-        sku: 'OC39',
-        description: 'Enjoy the ocean air and quaint coastal towns!',
-        priceInCents: 269995,
-        tags: ['weekend getaway', 'oregon coast', 'beachcombing'],
-        inSeason: false,
-        maximumGuests: 8,
-        available: true,
-        packagesSold: 0,
-    }).save();
+      new Vacation({
+          name: 'Rock Climbing in Bend',
+          slug: 'rock-climbing-in-bend',
+          category: 'Adventure',
+          sku: 'B99',
+          description: 'Experience the thrill of rock climbing in the high desert.',
+          priceInCents: 289995,
+          tags: ['weekend getaway', 'bend', 'high desert', 'rock climbing', 'hiking', 'skiing'],
+          inSeason: true,
+          requiresWaiver: true,
+          maximumGuests: 4,
+          available: false,
+          packagesSold: 0,
+          notes: 'The tour guide is currently recovering from a skiing accident.'
+      }).save();
+  });*/
 
-    new Vacation({
-        name: 'Rock Climbing in Bend',
-        slug: 'rock-climbing-in-bend',
-        category: 'Adventure',
-        sku: 'B99',
-        description: 'Experience the thrill of rock climbing in the high desert.',
-        priceInCents: 289995,
-        tags: ['weekend getaway', 'bend', 'high desert', 'rock climbing', 'hiking', 'skiing'],
-        inSeason: true,
-        requiresWaiver: true,
-        maximumGuests: 4,
-        available: false,
-        packagesSold: 0,
-        notes: 'The tour guide is currently recovering from a skiing accident.',
-    }).save();
-});
+  // Middleware
+  app.use(express.static(__dirname + '/public'));
 
-// Middleware
-app.use(express.static(__dirname + '/public'));
+  app.use(function(req, res, next) {
+    res.locals.showTests = app.get('env') !== 'production' &&
+      req.query.test === '1';
+    next();
+  });
 
-app.use(function(req, res, next) {
-  res.locals.showTests = app.get('env') !== 'production' &&
-    req.query.test === '1';
-  next();
-});
+  app.use(function(req, res, next) {
+    if (!res.locals.partials) res.locals.partials = {};
+    res.locals.partials.weatherContext = weather.getWeatherData();
+    next();
+  });
 
-app.use(function(req, res, next) {
-  if (!res.locals.partials) res.locals.partials = {};
-  res.locals.partials.weatherContext = weather.getWeatherData();
-  next();
-});
+  app.use(require('body-parser').urlencoded({
+    extended: true
+  }));
 
-app.use(require('body-parser').urlencoded({
-  extended: true
-}));
+  app.use(require('cookie-parser')(credentials.cookieSecret));
 
-app.use(require('cookie-parser')(credentials.cookieSecret));
+  app.use(require('express-session')({
+    resave: false,
+    saveUninitialized: false,
+    secret: credentials.cookieSecret
+  }));
 
-app.use(require('express-session')({
-  resave: false,
-  saveUninitialized: false,
-  secret: credentials.cookieSecret,
-}));
+  app.use(function(req, res, next) {
+    // Если имеется экстренное сообщение,
+    // переместим его в контекст, а затем удалим
+    res.locals.flash = req.session.flash;
+    delete req.session.flash;
+    next();
+  });
 
-app.use(function(req, res, next) {
-  // Если имеется экстренное сообщение,
-  // переместим его в контекст, а затем удалим
-  res.locals.flash = req.session.flash;
-  delete req.session.flash;
-  next();
-});
-
-switch (app.get('env')) {
-  case 'development':
-    // сжатое многоцветное журналирование для
-    // разработки
-    app.use(require('morgan')('dev'));
-    break;
-  case 'production':
-    // модуль 'express-logger' поддерживает ежедневное
-    // чередование файлов журналов
-    app.use(require('express-logger')({
-      path: __dirname + '/log/requests.log'
-    }));
-    break;
-}
-
-app.use(function(req, res, next) {
-  var cluster = require('cluster');
-  if (cluster.isWorker) {
-    console.log('Исполнитель %d получил запрос', cluster.worker.id);
+  switch (app.get('env')) {
+    case 'development':
+      // сжатое многоцветное журналирование для
+      // разработки
+      app.use(require('morgan')('dev'));
+      break;
+    case 'production':
+      // модуль 'express-logger' поддерживает ежедневное
+      // чередование файлов журналов
+      app.use(require('express-logger')({
+        path: __dirname + '/log/requests.log'
+      }));
+      break;
   }
-  next();
-});
 
-app.use(function(req, res, next) {
-  // создаем домен для этого запроса
-  var domain = require('domain').create();
-  // обрабатываем ошибки на этом домене
-  domain.on('error', function(err) {
-    console.error('ПЕРЕХВАЧЕНА ОШИБКА ДОМЕНА\n', err.stack);
-    try {
-      // Отказобезопасный останов через 5 секунд
-      setTimeout(function() {
-        console.error(' Отказобезопасный останов.');
-        process.exit(1);
-      }, 5000);
-      // Отключение от кластера
-      var worker = require('cluster').worker;
-      if (worker) worker.disconnect();
-      // Прекращение принятия новых запросов
-      server.close();
-      try {
-        // Попытка использовать маршрутизацию
-        // ошибок Express
-        next(err);
-      } catch (err) {
-        // Если маршрутизация ошибок Express не сработала,
-        // пробуем выдать текстовый ответ Node
-        console.error('Сбой механизма обработки ошибок ' +
-          'Express .\n', err.stack);
-        res.statusCode = 500;
-        res.setHeader('content-type', 'text/plain');
-        res.end('Ошибка сервера.');
-      }
-    } catch (err) {
-      console.error('Не могу отправить ответ 500.\n', err.stack);
+  app.use(function(req, res, next) {
+    var cluster = require('cluster');
+    if (cluster.isWorker) {
+      console.log('Исполнитель %d получил запрос', cluster.worker.id);
     }
-  });
-  // Добавляем объекты запроса и ответа в домен
-  domain.add(req);
-  domain.add(res);
-  // Выполняем оставшуюся часть цепочки запроса в домене
-  domain.run(next);
-});
-
-// Routs
-app.get('/', function(req, res) {
-  res.cookie('monster', 'nom nom');
-  res.cookie('signed_monster', 'nom nom', {
-    signed: true
+    next();
   });
 
-  /*emailService.send('eshaft@gmail.com',
-    'Сегодня распродажа туров по реке Худ!',
-    'Налетайте на них, пока не остыли!');*/
+  app.use(function(req, res, next) {
+    // создаем домен для этого запроса
+    var domain = require('domain').create();
+    // обрабатываем ошибки на этом домене
+    domain.on('error', function(err) {
+      console.error('ПЕРЕХВАЧЕНА ОШИБКА ДОМЕНА\n', err.stack);
+      try {
+        // Отказобезопасный останов через 5 секунд
+        setTimeout(function() {
+          console.error(' Отказобезопасный останов.');
+          process.exit(1);
+        }, 5000);
+        // Отключение от кластера
+        var worker = require('cluster').worker;
+        if (worker) worker.disconnect();
+        // Прекращение принятия новых запросов
+        server.close();
+        try {
+          // Попытка использовать маршрутизацию
+          // ошибок Express
+          next(err);
+        } catch (err) {
+          // Если маршрутизация ошибок Express не сработала,
+          // пробуем выдать текстовый ответ Node
+          console.error('Сбой механизма обработки ошибок ' +
+            'Express .\n', err.stack);
+          res.statusCode = 500;
+          res.setHeader('content-type', 'text/plain');
+          res.end('Ошибка сервера.');
+        }
+      } catch (err) {
+        console.error('Не могу отправить ответ 500.\n', err.stack);
+      }
+    });
+    // Добавляем объекты запроса и ответа в домен
+    domain.add(req);
+    domain.add(res);
+    // Выполняем оставшуюся часть цепочки запроса в домене
+    domain.run(next);
+  });
+
+  // Routs
+  app.get('/', function(req, res) {
+    res.cookie('monster', 'nom nom');
+    res.cookie('signed_monster', 'nom nom', {
+      signed: true
+    });
+
+    /*emailService.send('eshaft@gmail.com',
+      'Сегодня распродажа туров по реке Худ!',
+      'Налетайте на них, пока не остыли!');*/
 
   //email.sendError('Виджет вышел из строя!', __filename, ex);
 
@@ -230,7 +228,7 @@ app.get('/vacations', function(req, res) {
           name: vacation.name,
           description: vacation.description,
           price: vacation.getDisplayPrice(),
-          inSeason: vacation.inSeason,
+          inSeason: vacation.inSeason
         };
       })
     };
@@ -266,7 +264,7 @@ app.get('/data/nursery-rhyme', function(req, res) {
     animal: 'бельчонок',
     bodyPart: 'хвост',
     adjective: 'пушистый',
-    noun: 'черт',
+    noun: 'черт'
   });
 });
 
@@ -316,7 +314,7 @@ app.post('/contest/vacation-photo/:year/:month', function(req, res) {
         type: 'danger',
         intro: 'Упс!',
         message: 'Во время обработки отправленной Вами формы ' +
-          'произошла ошибка. Пожалуйста, попробуйте еще раз.',
+          'произошла ошибка. Пожалуйста, попробуйте еще раз.'
       };
       return res.redirect(303, '/contest/vacation-photo');
     }
@@ -330,7 +328,7 @@ app.post('/contest/vacation-photo/:year/:month', function(req, res) {
     req.session.flash = {
       type: 'success',
       intro: 'Удачи!',
-      message: 'Вы стали участником конкурса.',
+      message: 'Вы стали участником конкурса.'
     };
     return res.redirect(303, '/contest/vacation-photo/entries');
   });
@@ -344,7 +342,7 @@ app.use('/upload', function(req, res, next) {
     },
     uploadUrl: function() {
       return '/uploads/' + now;
-    },
+    }
   })(req, res, next);
 });
 
